@@ -1,0 +1,39 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Place {
+  id            String          @id @default(cuid())
+  googlePlaceId String          @unique @map("google_place_id")
+  name          String
+  address       String
+  category      String?
+  latitude      Float?
+  longitude     Float?
+  googleMapsUrl String          @map("google_maps_url")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  snapshots     PlaceSnapshot[]
+
+  @@map("places")
+}
+
+model PlaceSnapshot {
+  id          String   @id @default(cuid())
+  placeId     String   @map("place_id")
+  capturedAt  DateTime @map("captured_at")
+  rating      Float
+  reviewCount Int      @map("review_count")
+  source      String   // "GOOGLE_INSIGHTS" | "PLACE_PULSE"
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@index([placeId, capturedAt])
+  @@map("place_snapshots")
+}
