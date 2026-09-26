@@ -7,11 +7,13 @@ export interface ResolveResult {
 }
 
 export class PlaceResolverError extends Error {
+  public code: 'INVALID_URL' | 'PLACE_NOT_FOUND' | 'GOOGLE_API_ERROR' | 'NETWORK_ERROR';
   constructor(
     message: string,
-    public code: 'INVALID_URL' | 'PLACE_NOT_FOUND' | 'GOOGLE_API_ERROR' | 'NETWORK_ERROR'
+    code: 'INVALID_URL' | 'PLACE_NOT_FOUND' | 'GOOGLE_API_ERROR' | 'NETWORK_ERROR'
   ) {
     super(message);
+    this.code = code;
     this.name = 'PlaceResolverError';
   }
 }
@@ -33,19 +35,33 @@ export class PlaceResolver {
     }
 
     let urlString = trimmed;
-    const isUrl = /^https?:\/\//i.test(trimmed) || trimmed.includes('maps.google.') || trimmed.includes('google.com/maps') || trimmed.includes('goo.gl');
+    const isUrl = /^https?:\/\//i.test(trimmed) || 
+                  trimmed.includes('maps.google.') || 
+                  trimmed.includes('google.com/maps') || 
+                  trimmed.includes('goo.gl') || 
+                  trimmed.includes('share.google') || 
+                  trimmed.includes('g.co');
 
     if (isUrl) {
       if (!/^https?:\/\//i.test(urlString)) {
         urlString = `https://${urlString}`;
       }
 
-      // Step 1: Follow short URLs if needed (e.g. maps.app.goo.gl)
-      if (urlString.includes('goo.gl') || urlString.includes('maps.app.goo.gl')) {
+      // Step 1: Follow short URLs if needed (e.g. maps.app.goo.gl, share.google)
+      const isShortUrl = urlString.includes('goo.gl') || 
+                         urlString.includes('share.google') || 
+                         urlString.includes('g.co') || 
+                         urlString.includes('maps.app.goo.gl');
+
+      if (isShortUrl) {
         try {
           const res = await fetch(urlString, {
-            method: 'HEAD',
+            method: 'GET',
             redirect: 'follow',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            },
           });
           if (res.url && res.url !== urlString) {
             urlString = res.url;
@@ -175,11 +191,14 @@ export class PlaceResolver {
         result.searchQuery = decodeURIComponent(qParam.replace(/\+/g, ' '));
       }
 
-      // Check pathname for /place/Name/@lat,lng
+      // Check pathname for /place/Name/@lat,lng or /place/Name/data=...
       const pathname = decodeURIComponent(url.pathname);
-      const placeMatch = pathname.match(/\/place\/([^/@]+)/);
+      const placeMatch = pathname.match(/\/place\/([^/@?]+)/);
       if (placeMatch && placeMatch[1]) {
-        result.placeName = placeMatch[1].replace(/\+/g, ' ').trim();
+        const extracted = placeMatch[1].split('/')[0].replace(/\+/g, ' ').trim();
+        if (extracted && extracted.toLowerCase() !== 'maps' && extracted.toLowerCase() !== 'place') {
+          result.placeName = extracted;
+        }
       }
 
       // Check coordinates @lat,lng
@@ -196,6 +215,11 @@ export class PlaceResolver {
       const placeIdMatch = dataParam.match(/!1s(ChIJ[a-zA-Z0-9_-]{23,35})/);
       if (placeIdMatch) {
         result.placeId = placeIdMatch[1];
+      }
+
+      // If no placeName was found but searchQuery exists (e.g. from share.google redirect)
+      if (!result.placeName && result.searchQuery) {
+        result.placeName = result.searchQuery;
       }
     } catch (e) {
       console.warn('URL parsing error:', e);

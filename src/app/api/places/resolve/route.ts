@@ -39,6 +39,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (errMsg.includes('relation "places" does not exist') || errMsg.includes('does not exist')) {
+      return NextResponse.json(
+        { error: 'Database tables not found in Supabase. Please paste the SQL script into your Supabase SQL Editor and click Run.' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       { error: 'An unexpected error occurred while resolving the place. Please try again.' },
       { status: 500 }

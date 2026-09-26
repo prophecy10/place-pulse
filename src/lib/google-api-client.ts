@@ -22,11 +22,13 @@ export interface GooglePlaceDetails {
 }
 
 export class GoogleApiClientError extends Error {
+  public code: 'KEY_MISSING' | 'INVALID_KEY' | 'QUOTA_EXCEEDED' | 'NOT_FOUND' | 'NETWORK_ERROR' | 'UNKNOWN';
   constructor(
     message: string,
-    public code: 'KEY_MISSING' | 'INVALID_KEY' | 'QUOTA_EXCEEDED' | 'NOT_FOUND' | 'NETWORK_ERROR' | 'UNKNOWN'
+    code: 'KEY_MISSING' | 'INVALID_KEY' | 'QUOTA_EXCEEDED' | 'NOT_FOUND' | 'NETWORK_ERROR' | 'UNKNOWN'
   ) {
     super(message);
+    this.code = code;
     this.name = 'GoogleApiClientError';
   }
 }
