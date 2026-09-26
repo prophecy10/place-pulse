@@ -84,19 +84,19 @@ npx prisma db push
 ```
 
 ### Production Deployment (Supabase / PostgreSQL)
-To connect to Supabase or any managed PostgreSQL instance:
-1. In `prisma/schema.prisma`, change:
+Place Pulse is configured for PostgreSQL with transaction pooling:
+1. In `prisma/schema.prisma`:
    ```prisma
    datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
+     provider  = "postgresql"
+     url       = env("DATABASE_URL")
+     directUrl = env("DIRECT_URL")
    }
    ```
-2. In `.env`, set:
-   ```env
-   DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres"
-   ```
-3. Run `npx prisma db push`.
+2. In your environment variables (Vercel / .env):
+   - `DATABASE_URL`: Connection string on port 6543 with `?pgbouncer=true`.
+   - `DIRECT_URL`: Direct session connection string on port 5432.
+
 
 ---
 
